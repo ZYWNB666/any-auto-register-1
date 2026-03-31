@@ -166,6 +166,7 @@ class ChatGPTPlatform(BasePlatform):
                  {"key": "api_url", "label": "sub2api API URL", "type": "text"},
                  {"key": "api_key", "label": "sub2api API Key", "type": "text"},
                  {"key": "import_path", "label": "导入路径", "type": "text"},
+                 {"key": "skip_default_group_bind", "label": "跳过默认分组绑定(true/false)", "type": "text"},
              ]},
         ]
 
@@ -182,6 +183,7 @@ class ChatGPTPlatform(BasePlatform):
         a.session_token = extra.get("session_token", "")
         a.client_id = extra.get("client_id", "app_EMoamEEZ73f0CkXaXp7hrann")
         a.cookies = extra.get("cookies", "")
+        a.proxy_url = extra.get("proxy_url", "")
 
         if action_id == "refresh_token":
             from platforms.chatgpt.token_refresh import TokenRefreshManager
@@ -217,12 +219,20 @@ class ChatGPTPlatform(BasePlatform):
 
         elif action_id == "upload_sub2api":
             from platforms.chatgpt.cpa_upload import upload_to_sub2api
+            effective_proxy = (
+                (params or {}).get("proxy_url")
+                or getattr(a, "proxy_url", "")
+                or (extra.get("proxy_url") if isinstance(extra, dict) else "")
+                or proxy
+                or ""
+            )
             ok, msg = upload_to_sub2api(
                 a,
                 api_url=params.get("api_url"),
                 api_key=params.get("api_key"),
                 import_path=params.get("import_path"),
-                proxy_url=proxy or "",
+                proxy_url=effective_proxy,
+                skip_default_group_bind=params.get("skip_default_group_bind"),
             )
             return {"ok": ok, "data": msg}
 

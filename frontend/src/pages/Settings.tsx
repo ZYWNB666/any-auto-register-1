@@ -167,6 +167,7 @@ const TAB_ITEMS = [
           { key: 'sub2api_api_url', label: 'API URL', placeholder: 'http://127.0.0.1:8089' },
           { key: 'sub2api_api_key', label: 'API Key', secret: true },
           { key: 'sub2api_import_path', label: '导入路径', placeholder: '/api/v1/admin/accounts/data' },
+          { key: 'sub2api_skip_default_group_bind', label: '跳过默认分组绑定', placeholder: 'false（建议）/ true' },
         ],
       },
     ],

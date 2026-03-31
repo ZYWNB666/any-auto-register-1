@@ -1,0 +1,112 @@
+{
+  "exported_at": "2026-03-31T06:25:11Z",
+  "proxies": [
+    {
+      "proxy_key": "http|192.168.6.111|7890||",
+      "name": "default",
+      "protocol": "http",
+      "host": "192.168.6.111",
+      "port": 7890,
+      "status": "active"
+    }
+  ],
+  "accounts": [
+    {
+      "name": "AlfKihnsteg",
+      "platform": "openai",
+      "type": "oauth",
+      "credentials": {
+        "access_token": "eyJhbGciOiJSUz...bQBcPuJmveVmfhIxVadJKNipSbW8sQbh11tUwHwPfJWP6pJf8aigusfwjulXz3Sr08YIgezFfoC_AOO_o46bSoemciRzpVPFg9p0",
+        "chatgpt_account_id": "14b2e5a9-11ca-4bfa-85f6-cdcf41e25c5d",
+        "chatgpt_user_id": "user-ph1wTSVUhBC9saPPL8kWyoCb",
+        "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",
+        "email": "AlfKihnsteg@hotmail.com",
+        "expires_at": 1775801627,
+        "id_token": "eyJhb...fb25seQ",
+        "model_mapping": {
+          "gpt-5-codex": "gpt-5-codex",
+          "gpt-5-codex-mini": "gpt-5-codex-mini",
+          "gpt-5.1": "gpt-5.1",
+          "gpt-5.1-codex": "gpt-5.1-codex",
+          "gpt-5.1-codex-max": "gpt-5.1-codex-max",
+          "gpt-5.1-codex-mini": "gpt-5.1-codex-mini",
+          "gpt-5.2": "gpt-5.2",
+          "gpt-5.2-codex": "gpt-5.2-codex",
+          "gpt-5.3-codex": "gpt-5.3-codex",
+          "gpt-5.4": "gpt-5.4",
+          "gpt-5.4-mini": "gpt-5.4-mini"
+        },
+        "organization_id": "org-263f7fa2c1c45b82d0163b41",
+        "plan_type": "free",
+        "refresh_token": ""
+      },
+      "extra": {
+        "email": "AlfKihnsteg@hotmail.com",
+        "openai_oauth_responses_websockets_v2_enabled": false,
+        "openai_oauth_responses_websockets_v2_mode": "off",
+        "privacy_mode": "training_off"
+      },
+      "concurrency": 10,
+      "priority": 1,
+      "rate_multiplier": 1,
+      "auto_pause_on_expired": true
+    },
+    {
+      "name": "test",
+      "platform": "openai",
+      "type": "oauth",
+      "credentials": {
+        "access_token": "eyJhbGciOiJ...DRi3JBFc",
+        "chatgpt_account_id": "3748ea9d-045e-4c94-860d-d64ad5837d20",
+        "chatgpt_user_id": "user-CHZjkHrkVk8DX3aCJ9qsCVNT",
+        "client_id": "app_EMoamEEZ73f0CkXaXp7hrann",
+        "email": "d68fmyyfnn@privaterelay.appleid.com",
+        "expires_at": 1775799441,
+        "id_token": "eyJhbGci...C9e4EmA",
+        "model_mapping": {
+          "gpt-5-codex": "gpt-5-codex",
+          "gpt-5-codex-mini": "gpt-5-codex-mini",
+          "gpt-5.1": "gpt-5.1",
+          "gpt-5.1-codex": "gpt-5.1-codex",
+          "gpt-5.1-codex-max": "gpt-5.1-codex-max",
+          "gpt-5.1-codex-mini": "gpt-5.1-codex-mini",
+          "gpt-5.2": "gpt-5.2",
+          "gpt-5.2-codex": "gpt-5.2-codex",
+          "gpt-5.3-codex": "gpt-5.3-codex",
+          "gpt-5.4": "gpt-5.4",
+          "gpt-5.4-mini": "gpt-5.4-mini"
+        },
+        "organization_id": "org-RWmn2dWN4elcMWlsuUdsHej5",
+        "plan_type": "free",
+        "refresh_token": "rt_zWX4ep695X1ddtptwA-E63YXnETunRdWBYi5E355I2U.7fWaqHBvJK_LqOt2lM3tEp43MNoD3aWKCf47Tljg11M"
+      },
+      "extra": {
+        "codex_5h_reset_after_seconds": 0,
+        "codex_5h_reset_at": "2026-03-31T13:41:16+08:00",
+        "codex_5h_used_percent": 0,
+        "codex_5h_window_minutes": 0,
+        "codex_7d_reset_after_seconds": 604604,
+        "codex_7d_reset_at": "2026-04-07T13:38:00+08:00",
+        "codex_7d_used_percent": 0,
+        "codex_7d_window_minutes": 10080,
+        "codex_primary_over_secondary_percent": 0,
+        "codex_primary_reset_after_seconds": 604604,
+        "codex_primary_used_percent": 0,
+        "codex_primary_window_minutes": 10080,
+        "codex_secondary_reset_after_seconds": 0,
+        "codex_secondary_used_percent": 0,
+        "codex_secondary_window_minutes": 0,
+        "codex_usage_updated_at": "2026-03-31T13:41:16+08:00",
+        "email": "d68fmyyfnn@privaterelay.appleid.com",
+        "openai_oauth_responses_websockets_v2_enabled": false,
+        "openai_oauth_responses_websockets_v2_mode": "off",
+        "privacy_mode": "training_off"
+      },
+      "proxy_key": "http|192.168.6.111|7890||",
+      "concurrency": 10,
+      "priority": 1,
+      "rate_multiplier": 1,
+      "auto_pause_on_expired": true
+    }
+  ]
+}

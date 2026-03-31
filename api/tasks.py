@@ -154,6 +154,8 @@ def _run_register(task_id: str, req: RegisterTaskRequest):
                     password=req.password,
                 )
                 if isinstance(account.extra, dict):
+                    if _proxy:
+                        account.extra.setdefault("proxy_url", _proxy)
                     mail_provider = merged_extra.get("mail_provider", "")
                     if mail_provider:
                         account.extra.setdefault("mail_provider", mail_provider)

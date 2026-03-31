@@ -44,8 +44,9 @@ def sync_account(account) -> list[dict[str, Any]]:
             b.refresh_token = extra.get("refresh_token", "")
             b.id_token = extra.get("id_token", "")
             b.client_id = extra.get("client_id", "app_EMoamEEZ73f0CkXaXp7hrann")
+            b.proxy_url = extra.get("proxy_url", "")
 
-            ok, msg = upload_to_sub2api(b)
+            ok, msg = upload_to_sub2api(b, proxy_url=getattr(b, "proxy_url", "") or "")
             results.append({"name": "sub2api", "ok": ok, "msg": msg})
 
     elif platform == "grok":

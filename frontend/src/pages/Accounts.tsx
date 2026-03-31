@@ -243,6 +243,40 @@ export default function Accounts() {
     load()
   }
 
+  const handleBatchUploadSub2api = async () => {
+    if (selectedRowKeys.length === 0) return
+    if (currentPlatform !== 'chatgpt') {
+      message.warning('仅 ChatGPT 平台支持一键上传 sub2api')
+      return
+    }
+
+    const ids = Array.from(selectedRowKeys)
+    let success = 0
+    let failed = 0
+
+    await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const res = await apiFetch(`/actions/${currentPlatform}/${id}/upload_sub2api`, {
+            method: 'POST',
+            body: JSON.stringify({ params: {} }),
+          })
+          if (res?.ok) success += 1
+          else failed += 1
+        } catch {
+          failed += 1
+        }
+      }),
+    )
+
+    if (failed === 0) {
+      message.success(`sub2api 上传完成：成功 ${success} / ${ids.length}`)
+    } else {
+      message.warning(`sub2api 上传完成：成功 ${success}，失败 ${failed}`)
+    }
+    load()
+  }
+
   const handleAdd = async () => {
     const values = await addForm.validateFields()
     await apiFetch('/accounts', {
@@ -437,6 +471,11 @@ export default function Accounts() {
             <Popconfirm title={`确认删除选中的 ${selectedRowKeys.length} 个账号？`} onConfirm={handleBatchDelete}>
               <Button danger icon={<DeleteOutlined />}>删除 {selectedRowKeys.length} 个</Button>
             </Popconfirm>
+          )}
+          {selectedRowKeys.length > 0 && currentPlatform === 'chatgpt' && (
+            <Button icon={<UploadOutlined />} onClick={handleBatchUploadSub2api}>
+              上传 sub2api
+            </Button>
           )}
           <Button icon={<UploadOutlined />} onClick={() => setImportModalOpen(true)}>导入</Button>
           <Button icon={<DownloadOutlined />} onClick={exportCsv} disabled={accounts.length === 0}>导出</Button>
