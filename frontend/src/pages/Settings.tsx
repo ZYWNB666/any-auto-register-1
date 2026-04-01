@@ -80,6 +80,7 @@ const TAB_ITEMS = [
           { key: 'freemail_admin_token', label: '管理员令牌', secret: true },
           { key: 'freemail_username', label: '用户名（可选）' },
           { key: 'freemail_password', label: '密码（可选）', secret: true },
+          { key: 'freemail_domain_index', label: '域名索引（可选）', placeholder: '留空=随机域名；0=第一个域名，1=第二个域名...' },
         ],
       },
       {

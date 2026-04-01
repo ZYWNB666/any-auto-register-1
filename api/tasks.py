@@ -116,6 +116,9 @@ def _run_register(task_id: str, req: RegisterTaskRequest):
 
         def _do_one(i: int):
             nonlocal next_start_time
+            _proxy = None
+            _mailbox = None
+            merged_extra = {}
             try:
                 from core.proxy_pool import proxy_pool
 
@@ -133,7 +136,7 @@ def _run_register(task_id: str, req: RegisterTaskRequest):
                 from core.config_store import config_store
                 merged_extra = config_store.get_all().copy()
                 merged_extra.update({k: v for k, v in req.extra.items() if v is not None and v != ""})
-                
+
                 _config = RegisterConfig(
                     executor_type=req.executor_type,
                     captcha_solver=req.captcha_solver,
@@ -185,8 +188,19 @@ def _run_register(task_id: str, req: RegisterTaskRequest):
                         _tasks[task_id].setdefault("cashier_urls", []).append(cashier_url)
                 return True
             except Exception as e:
-                if _proxy: proxy_pool.report_fail(_proxy)
-                _log(task_id, f"✗ 注册失败: {e}")
+                if _proxy:
+                    proxy_pool.report_fail(_proxy)
+
+                cleanup_msg = ""
+                try:
+                    mail_provider = str(merged_extra.get("mail_provider", "")).strip().lower()
+                    if mail_provider == "freemail" and _mailbox and hasattr(_mailbox, "delete_mailbox"):
+                        deleted = bool(_mailbox.delete_mailbox())
+                        cleanup_msg = "；失败邮箱已自动删除" if deleted else "；失败邮箱删除未成功"
+                except Exception as cleanup_err:
+                    cleanup_msg = f"；失败邮箱删除异常: {cleanup_err}"
+
+                _log(task_id, f"✗ 注册失败: {e}{cleanup_msg}")
                 _save_task_log(req.platform, req.email or "", "failed", error=str(e))
                 return str(e)
 

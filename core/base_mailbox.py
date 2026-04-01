@@ -105,6 +105,7 @@ def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'Bas
             admin_token=extra.get("freemail_admin_token", ""),
             username=extra.get("freemail_username", ""),
             password=extra.get("freemail_password", ""),
+            domain_index=extra.get("freemail_domain_index", ""),
             proxy=proxy,
         )
     elif provider == "moemail":
@@ -127,6 +128,7 @@ def create_mailbox(provider: str, extra: dict = None, proxy: str = None) -> 'Bas
             project_code=extra.get("luckmail_project_code", ""),
             email_type=extra.get("luckmail_email_type", ""),
             domain=extra.get("luckmail_domain", ""),
+            specified_email=extra.get("luckmail_specified_email", ""),
             mode=extra.get("luckmail_mode", ""),
         )
     else:  # laoudo
@@ -628,7 +630,8 @@ class LuckMailMailbox(BaseMailbox):
 
     def __init__(self, base_url: str, api_key: str,
                  project_code: str = "", email_type: str = "",
-                 domain: str = "", mode: str = ""):
+                 domain: str = "", specified_email: str = "",
+                 mode: str = ""):
         if not base_url or not api_key:
             raise RuntimeError(
                 "LuckMail 未配置：请在全局设置中填写 luckmail_base_url 和 luckmail_api_key"
@@ -641,6 +644,7 @@ class LuckMailMailbox(BaseMailbox):
         self._project_code = project_code
         self._email_type = email_type or None
         self._domain = domain or None
+        self._specified_email = str(specified_email or "").strip() or None
         self._mode = str(mode or "").strip().lower()
         self._order_no = None
         self._token = None
@@ -785,12 +789,14 @@ class LuckMailMailbox(BaseMailbox):
 
         self._log(
             f"[LuckMail] 分支: 其他平台 + LuckMail -> 创建订单/订单接码 "
-            f"(project_code={self._project_code}, email_type={self._email_type or '-'})"
+            f"(project_code={self._project_code}, email_type={self._email_type or '-'}, specified_email={self._specified_email or '-'})"
         )
         try:
             body = {"project_code": self._project_code}
             if self._email_type:
                 body["email_type"] = self._email_type
+            if self._specified_email:
+                body["specified_email"] = self._specified_email
             order = self._client.user._sync_create_order(body)
         except Exception as e:
             raise RuntimeError(f"LuckMail 创建订单失败: {e}") from e
@@ -886,69 +892,269 @@ class FreemailMailbox(BaseMailbox):
 
     def __init__(self, api_url: str, admin_token: str = "",
                  username: str = "", password: str = "",
+                 domain_index: Any = None,
                  proxy: str = None):
         self.api = api_url.rstrip("/")
         self.admin_token = admin_token
         self.username = username
         self.password = password
+        self.domain_index = self._safe_int(domain_index, min_value=0)
         self.proxy = {"http": proxy, "https": proxy} if proxy else None
         self._session = None
         self._email = None
+        self._auth_mode = ""
 
     def _get_session(self):
         import requests
         s = requests.Session()
-        s.proxies = self.proxy
+        # Freemail 接口统一直连，不走任何系统/任务代理
+        s.trust_env = False
+        s.proxies = {}
+        if self.proxy:
+            self._log("[Freemail] 已忽略代理配置，邮箱 API 直连")
+        self._auth_mode = ""
         if self.admin_token:
             s.headers.update({"Authorization": f"Bearer {self.admin_token}"})
+            self._auth_mode = "token"
         elif self.username and self.password:
-            s.post(f"{self.api}/api/login",
-                json={"username": self.username, "password": self.password},
-                timeout=15)
+            if self._login_with_password(s):
+                self._auth_mode = "password"
         self._session = s
         return s
 
-    def get_email(self) -> MailboxAccount:
+    def _safe_int(self, value: Any, min_value: int = 0) -> Optional[int]:
+        if value is None:
+            return None
+        text = str(value).strip()
+        if text == "":
+            return None
+        try:
+            number = int(text)
+        except Exception:
+            return None
+        if number < min_value:
+            return None
+        return number
+
+    def _login_with_password(self, session=None) -> bool:
+        if not (self.username and self.password):
+            return False
+        s = session or self._session
+        if s is None:
+            return False
+
+        try:
+            s.headers.pop("Authorization", None)
+            r = s.post(
+                f"{self.api}/api/login",
+                json={"username": self.username, "password": self.password},
+                timeout=15,
+            )
+            if r.status_code >= 400:
+                self._log(f"[Freemail] 登录失败: HTTP {r.status_code}, body={str(r.text)[:200]}")
+                return False
+
+            try:
+                data = r.json()
+            except Exception:
+                self._log(f"[Freemail] 登录响应非 JSON: {str(r.text)[:200]}")
+                return False
+
+            if isinstance(data, dict) and data.get("success") is False:
+                self._log(f"[Freemail] 登录响应失败: {data}")
+                return False
+
+            self._auth_mode = "password"
+            return True
+        except Exception as e:
+            self._log(f"[Freemail] 登录异常: {e}")
+            return False
+
+    def _request_json(self, method: str, path: str, timeout: int = 15,
+                      retry_on_401: bool = True, **kwargs) -> Any:
         if not self._session:
             self._get_session()
-        import requests
-        r = self._session.get(f"{self.api}/api/generate", timeout=15)
-        data = r.json()
-        email = data.get("email", "")
+
+        url = f"{self.api}{path}"
+        r = self._session.request(method, url, timeout=timeout, **kwargs)
+
+        if (
+            r.status_code == 401
+            and retry_on_401
+            and self._auth_mode == "token"
+            and self.username
+            and self.password
+        ):
+            self._log("[Freemail] Bearer 鉴权失败(401)，尝试账号密码登录后重试")
+            if self._login_with_password(self._session):
+                r = self._session.request(method, url, timeout=timeout, **kwargs)
+
+        if r.status_code >= 400:
+            body_preview = str(r.text or "").replace("\n", " ")[:300]
+            raise RuntimeError(
+                f"Freemail 请求失败: {method} {path} -> HTTP {r.status_code}, body={body_preview}"
+            )
+
+        try:
+            return r.json()
+        except Exception as e:
+            body_preview = str(r.text or "").replace("\n", " ")[:300]
+            content_type = r.headers.get("content-type", "")
+            raise RuntimeError(
+                f"Freemail 返回非 JSON: {method} {path}, content-type={content_type}, body={body_preview}"
+            ) from e
+
+    def _extract_mail_list(self, data: Any) -> list:
+        if isinstance(data, list):
+            return data
+        if isinstance(data, dict):
+            emails = data.get("emails")
+            if isinstance(emails, list):
+                return emails
+            inner = data.get("data")
+            if isinstance(inner, list):
+                return inner
+        return []
+
+    def _extract_domain_list(self, data: Any) -> list:
+        if isinstance(data, list):
+            return [str(item).strip() for item in data if str(item).strip()]
+        if isinstance(data, dict):
+            for key in ("domains", "data"):
+                values = data.get(key)
+                if isinstance(values, list):
+                    return [str(item).strip() for item in values if str(item).strip()]
+        return []
+
+    def _resolve_generate_domain_index(self) -> Optional[int]:
+        # 配置了固定索引则直接使用
+        if self.domain_index is not None:
+            return self.domain_index
+
+        # 未配置索引则自动随机选择现有域名
+        try:
+            domains_data = self._request_json("GET", "/api/domains", timeout=10)
+            domains = self._extract_domain_list(domains_data)
+            if not domains:
+                return None
+            import random
+            idx = random.randrange(len(domains))
+            self._log(f"[Freemail] 随机选择域名: index={idx}, domain={domains[idx]}")
+            return idx
+        except Exception as e:
+            self._log(f"[Freemail] 获取域名列表失败，将使用服务端默认域名: {e}")
+            return None
+
+    def get_email(self) -> MailboxAccount:
+        params = {}
+        selected_domain_index = self._resolve_generate_domain_index()
+        if selected_domain_index is not None:
+            params["domainIndex"] = selected_domain_index
+
+        data = self._request_json("GET", "/api/generate", timeout=15, params=params)
+        if not isinstance(data, dict):
+            raise RuntimeError(f"Freemail /api/generate 返回结构异常: {data}")
+
+        email = str(data.get("email") or "").strip()
+        if not email:
+            raise RuntimeError(f"Freemail /api/generate 返回缺少 email: {data}")
+
         self._email = email
-        print(f"[Freemail] 生成邮箱: {email}")
+        if selected_domain_index is None:
+            self._log(f"[Freemail] 生成邮箱: {email}")
+        else:
+            mode = "fixed" if self.domain_index is not None else "random"
+            self._log(
+                f"[Freemail] 生成邮箱: {email} "
+                f"(domainIndex={selected_domain_index}, mode={mode})"
+            )
         return MailboxAccount(email=email, account_id=email)
+
+    def delete_mailbox(self, email: str = "") -> bool:
+        address = str(email or self._email or "").strip().lower()
+        if not address:
+            self._log("[Freemail] 无可删除邮箱地址，跳过删除")
+            return False
+
+        try:
+            data = self._request_json(
+                "DELETE",
+                "/api/mailboxes",
+                params={"address": address},
+                timeout=15,
+            )
+        except Exception as e:
+            self._log(f"[Freemail] 删除邮箱失败: {address}, error={e}")
+            return False
+
+        ok = False
+        if isinstance(data, dict):
+            if "deleted" in data:
+                ok = bool(data.get("success", False)) and bool(data.get("deleted", False))
+            elif "success" in data:
+                ok = bool(data.get("success"))
+
+        if ok:
+            self._log(f"[Freemail] 已删除邮箱: {address}")
+            if str(self._email or "").strip().lower() == address:
+                self._email = None
+            return True
+
+        self._log(f"[Freemail] 删除邮箱返回异常: address={address}, data={data}")
+        return False
 
     def get_current_ids(self, account: MailboxAccount) -> set:
         try:
-            r = self._session.get(f"{self.api}/api/emails",
-                params={"mailbox": account.email, "limit": 50}, timeout=10)
-            return {str(m["id"]) for m in r.json() if "id" in m}
-        except Exception:
+            data = self._request_json(
+                "GET",
+                "/api/emails",
+                params={"mailbox": account.email, "limit": 50},
+                timeout=10,
+            )
+            mails = self._extract_mail_list(data)
+            return {
+                str(m.get("id"))
+                for m in mails
+                if isinstance(m, dict) and m.get("id") is not None
+            }
+        except Exception as e:
+            self._log(f"[Freemail] 获取邮件列表失败: {e}")
             return set()
 
     def wait_for_code(self, account: MailboxAccount, keyword: str = "",
                       timeout: int = 120, before_ids: set = None, code_pattern: str = None, **kwargs) -> str:
-        import re, time
+        import time
+
         seen = set(before_ids or [])
         start = time.time()
         while time.time() - start < timeout:
             try:
-                r = self._session.get(f"{self.api}/api/emails",
-                    params={"mailbox": account.email, "limit": 20}, timeout=10)
-                for msg in r.json():
+                data = self._request_json(
+                    "GET",
+                    "/api/emails",
+                    params={"mailbox": account.email, "limit": 20},
+                    timeout=10,
+                )
+                mails = self._extract_mail_list(data)
+                for msg in mails:
+                    if not isinstance(msg, dict):
+                        continue
                     mid = str(msg.get("id", ""))
-                    if not mid or mid in seen: continue
+                    if not mid or mid in seen:
+                        continue
                     seen.add(mid)
+
                     # 直接用 verification_code 字段
                     code = str(msg.get("verification_code") or "")
                     if code and code != "None":
                         return code
+
                     # 兜底：从 preview 提取
                     text = str(msg.get("preview", "")) + " " + str(msg.get("subject", ""))
                     code = self._safe_extract(text, code_pattern)
-                    if code: return code
-            except Exception:
-                pass
+                    if code:
+                        return code
+            except Exception as e:
+                self._log(f"[Freemail] 轮询邮件失败: {e}")
             time.sleep(3)
         raise TimeoutError(f"等待验证码超时 ({timeout}s)")

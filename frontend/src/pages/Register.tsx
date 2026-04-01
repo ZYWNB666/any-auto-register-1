@@ -46,6 +46,7 @@ export default function Register() {
         freemail_admin_token: cfg.freemail_admin_token || '',
         freemail_username: cfg.freemail_username || '',
         freemail_password: cfg.freemail_password || '',
+        freemail_domain_index: cfg.freemail_domain_index || '',
         cfworker_api_url: cfg.cfworker_api_url || '',
         cfworker_admin_token: cfg.cfworker_admin_token || '',
         cfworker_domain: cfg.cfworker_domain || '',
@@ -85,6 +86,7 @@ export default function Register() {
           freemail_admin_token: values.freemail_admin_token,
           freemail_username: values.freemail_username,
           freemail_password: values.freemail_password,
+          freemail_domain_index: values.freemail_domain_index,
           cfworker_api_url: values.cfworker_api_url,
           cfworker_admin_token: values.cfworker_admin_token,
           cfworker_domain: values.cfworker_domain,
@@ -228,6 +230,25 @@ export default function Register() {
               </Form.Item>
               <Form.Item name="cfworker_fingerprint" label="Fingerprint (可选)">
                 <Input placeholder="cfb82279f..." />
+              </Form.Item>
+            </>
+          )}
+          {mailProvider === 'freemail' && (
+            <>
+              <Form.Item name="freemail_api_url" label="API URL">
+                <Input placeholder="https://mail.example.com" />
+              </Form.Item>
+              <Form.Item name="freemail_admin_token" label="管理员令牌（可选）">
+                <Input.Password placeholder="JWT_TOKEN" />
+              </Form.Item>
+              <Form.Item name="freemail_username" label="用户名（可选）">
+                <Input placeholder="admin" />
+              </Form.Item>
+              <Form.Item name="freemail_password" label="密码（可选）">
+                <Input.Password placeholder="******" />
+              </Form.Item>
+              <Form.Item name="freemail_domain_index" label="域名索引（可选）">
+                <Input placeholder="留空=随机域名；0=第一个域名，1=第二个域名..." />
               </Form.Item>
             </>
           )}
